@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Partner Health Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f6f9;
+      --surface: #ffffff;
+      --border: #e2e6ed;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --blue: #0176d3;
+      --blue-light: #eaf3fb;
+      --green: #2e844a;
+      --green-light: #eaf5ec;
+      --yellow: #b45309;
+      --yellow-light: #fef3c7;
+      --red: #ba0517;
+      --red-light: #fde8ea;
+      --radius: 10px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.07), 0 0 1px rgba(0,0,0,0.06);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* ── Top nav ── */
+    .topnav {
+      background: #032d60;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      height: 52px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topnav-left { display: flex; align-items: center; gap: 12px; }
+    .topnav-logo {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: white;
+    }
+    .topnav-logo span { color: #00a1e0; }
+    .topnav-divider { width: 1px; height: 22px; background: rgba(255,255,255,0.2); }
+    .topnav-section { font-size: 13px; color: rgba(255,255,255,0.75); }
+    .topnav-right { display: flex; align-items: center; gap: 16px; }
+    .topnav-app { font-size: 13px; font-weight: 600; color: white; }
+    .nav-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: #00a1e0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: white;
+    }
+
+    /* ── Page shell ── */
+    .page { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .page-title { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+    .page-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
+
+    .header-controls { display: flex; align-items: center; gap: 10px; }
+    .period-selector {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .period-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border: none;
+      background: none;
+      border-right: 1px solid var(--border);
+    }
+    .period-btn:last-child { border-right: none; }
+    .period-btn.active { background: var(--blue); color: white; }
+    .period-btn:hover:not(.active) { background: #f0f4f8; }
+
+    /* ── Permission banner ── */
+    .permission-banner {
+      background: var(--yellow-light);
+      border: 1px solid #fcd34d;
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 16px;
+    }
+    .permission-banner-left { display: flex; align-items: flex-start; gap: 12px; }
+    .permission-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .permission-text {}
+    .permission-title { font-size: 13px; font-weight: 600; color: #92400e; }
+    .permission-body { font-size: 12px; color: #b45309; margin-top: 2px; line-height: 1.5; }
+    .permission-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; }
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-primary:hover { background: #0165b8; }
+    .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); background: white; }
+    .btn-ghost:hover { background: var(--bg); }
+
+    /* ── Health score hero ── */
+    .hero-row {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .score-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+    }
+    .score-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+    .score-ring-wrap { position: relative; width: 130px; height: 130px; margin-bottom: 16px; }
+    .score-ring-wrap canvas { position: absolute; top: 0; left: 0; }
+    .score-center {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .score-number { font-size: 38px; font-weight: 800; color: var(--text-primary); line-height: 1; }
+    .score-band {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .band-healthy { background: var(--green-light); color: var(--green); }
+    .band-attention { background: var(--yellow-light); color: var(--yellow); }
+    .band-risk { background: var(--red-light); color: var(--red); }
+    .score-insight {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      max-width: 220px;
+    }
+    .score-insight strong { color: var(--red); }
+
+    .score-components { width: 100%; margin-top: 18px; }
+    .component-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-top: 1px solid var(--border);
+    }
+    .component-name { font-size: 11px; color: var(--text-secondary); flex: 1; text-align: left; }
+    .component-bar-wrap { flex: 2; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .component-bar { height: 100%; border-radius: 3px; }
+    .bar-green { background: var(--green); }
+    .bar-yellow { background: #f59e0b; }
+    .bar-red { background: var(--red); }
+    .component-value { font-size: 11px; font-weight: 600; color: var(--text-primary); width: 28px; text-align: right; }
+    .component-weight { font-size: 10px; color: var(--text-muted); width: 30px; text-align: right; }
+
+    /* ── KPI strip ── */
+    .kpi-strip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      overflow: hidden;
+    }
+    .kpi {
+      padding: 20px 22px;
+      border-right: 1px solid var(--border);
+    }
+    .kpi:last-child { border-right: none; }
+    .kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 6px; }
+    .kpi-value { font-size: 28px; font-weight: 800; color: var(--text-primary); line-height: 1; }
+    .kpi-delta {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 12px; font-weight: 600;
+      margin-top: 5px;
+    }
+    .delta-up { color: var(--green); }
+    .delta-down { color: var(--red); }
+    .delta-neutral { color: var(--text-muted); }
+    .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Chart grid ── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px 22px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .card-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+    .card-meta { font-size: 11px; color: var(--text-muted); }
+    .card-body { position: relative; }
+
+    /* ── Errors table ── */
+    .error-table { width: 100%; border-collapse: collapse; }
+    .error-table th {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-align: left;
+      padding: 0 8px 10px;
+    }
+    .error-table td {
+      font-size: 12px;
+      color: var(--text-primary);
+      padding: 9px 8px;
+      border-top: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .error-code { font-family: "SF Mono", "Menlo", monospace; font-size: 11px; color: var(--red); font-weight: 600; }
+    .error-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .badge-red { background: var(--red-light); color: var(--red); }
+    .badge-yellow { background: var(--yellow-light); color: var(--yellow); }
+    .badge-gray { background: #f3f4f6; color: var(--text-secondary); }
+    .error-bar-wrap { width: 80px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; display: inline-block; }
+    .error-bar { height: 100%; background: var(--red); border-radius: 2px; }
+    .masked-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f3f4f6;
+      border: 1px dashed #d1d5db;
+      border-radius: 20px;
+      padding: 3px 8px;
+      font-size: 10px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .masked-pill:hover { background: #e9ecf0; }
+
+    /* ── Full-width card ── */
+    .card-full { margin-top: 16px; }
+
+    /* ── Footer note ── */
+    .footer-note {
+      margin-top: 24px;
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ── Spike annotation ── */
+    .spike-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--red);
+      font-weight: 600;
+      background: var(--red-light);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="topnav">
+  <div class="topnav-left">
+    <div class="topnav-logo">Sales<span>force</span></div>
+    <div class="topnav-divider"></div>
+    <div class="topnav-section">Partner Portal</div>
+  </div>
+  <div class="topnav-right">
+    <span class="topnav-app">Acme Analytics Suite</span>
+    <div class="nav-avatar">MP</div>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">App Health Dashboard</div>
+      <div class="page-subtitle">Acme Analytics Suite &nbsp;·&nbsp; Last updated 2 hours ago</div>
+    </div>
+    <div class="header-controls">
+      <div class="period-selector">
+        <button class="period-btn">7d</button>
+        <button class="period-btn active">28d</button>
+        <button class="period-btn">90d</button>
+        <button class="period-btn">12m</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Permission banner -->
+  <div class="permission-banner">
+    <div class="permission-banner-left">
+      <div class="permission-icon">🔒</div>
+      <div class="permission-text">
+        <div class="permission-title">Org-level error attribution is not enabled</div>
+        <div class="permission-body">
+          You're seeing aggregated error counts only. To see which customer orgs are affected by each error,
+          enable the Data Sharing Agreement with Salesforce. This requires a one-time approval from your account's Partner Admin.
+        </div>
+      </div>
+    </div>
+    <div class="permission-actions">
+      <button class="btn btn-primary">Enable Org Attribution</button>
+      <button class="btn btn-ghost">Learn more</button>
+    </div>
+  </div>
+
+  <!-- Hero row: health score + KPI strip -->
+  <div class="hero-row">
+
+    <!-- Health score card -->
+    <div class="score-card">
+      <div class="score-label">Partner Health Score</div>
+      <div class="score-ring-wrap">
+        <canvas id="scoreRing" width="130" height="130"></canvas>
+        <div class="score-center">
+          <div class="score-number">61</div>
+        </div>
+      </div>
+      <div class="score-band band-attention">⚠ Needs Attention</div>
+      <div class="score-insight">
+        <strong>Error rate spike</strong> in the last 7 days is the primary drag on your score. Uptime remains strong. Address top errors to recover to Healthy.
+      </div>
+
+      <!-- Component breakdown -->
+      <div class="score-components">
+        <div class="component-row">
+          <div class="component-name">Error Rate</div>
+          <div class="component-bar-wrap"><div class="component-bar bar-red" style="width:38%"></div></div>
+          <div class="component-value" style="color:var(--red)">38</div>
+          <div class="component-weight">35%</div>
+        </div>
+        <div class="component-row">
+          <div class="component-name">Uptime</div>
+          <div class="component-bar-wrap"><div class="component-bar bar-green" style="width:97%"></div></div>
+          <div class="component-value" style="color:var(--green)">97</div>
+          <div class="component-weight">35%</div>
+        </div>
+        <div class="component-row">
+          <div class="component-name">MAU Retention</div>
+          <div class="component-bar-wrap"><div class="component-bar bar-green" style="width:82%"></div></div>
+          <div class="component-value">82</div>
+          <div class="component-weight">20%</div>
+        </div>
+        <div class="component-row">
+          <div class="component-name">Install Growth</div>
+          <div class="component-bar-wrap"><div class="component-bar bar-yellow" style="width:64%"></div></div>
+          <div class="component-value">64</div>
+          <div class="component-weight">10%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI strip -->
+    <div class="kpi-strip">
+      <div class="kpi">
+        <div class="kpi-label">Active Installs</div>
+        <div class="kpi-value">512</div>
+        <div class="kpi-delta delta-up">↑ +14 <span style="font-weight:400;color:var(--text-muted)">this period</span></div>
+        <div class="kpi-sub">of 524 total orgs</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Monthly Active Users</div>
+        <div class="kpi-value">8,341</div>
+        <div class="kpi-delta delta-up">↑ +6.2% <span style="font-weight:400;color:var(--text-muted)">MoM</span></div>
+        <div class="kpi-sub">28-day rolling window</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Error Rate</div>
+        <div class="kpi-value" style="color:var(--red)">47.3</div>
+        <div class="kpi-delta delta-down">↑ +31 <span style="font-weight:400;color:var(--text-muted)">vs prior 28d</span></div>
+        <div class="kpi-sub">per 1,000 invocations</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Uptime</div>
+        <div class="kpi-value" style="color:var(--green)">99.7%</div>
+        <div class="kpi-delta delta-neutral">— <span style="font-weight:400">no degradations</span></div>
+        <div class="kpi-sub">last 28 days</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Chart row 1 -->
+  <div class="chart-grid">
+
+    <!-- Install trend -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">App Installs Over Time</div>
+        <div class="card-meta">Cumulative · Production orgs only</div>
+      </div>
+      <div class="card-body">
+        <canvas id="installChart" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- MAU trend -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Monthly Active Users</div>
+        <div class="card-meta">28-day rolling · Excl. Salesforce internal users</div>
+      </div>
+      <div class="card-body">
+        <canvas id="mauChart" height="180"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Chart row 2 -->
+  <div class="chart-grid">
+
+    <!-- Error rate trend -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Error Rate</div>
+        <span class="spike-note">⚡ Spike detected Mar 18</span>
+      </div>
+      <div class="card-body">
+        <canvas id="errorRateChart" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- Top errors table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Top Errors</div>
+        <div class="card-meta">Last 28 days · by volume</div>
+      </div>
+      <div class="card-body">
+        <table class="error-table">
+          <thead>
+            <tr>
+              <th>Error</th>
+              <th>Volume</th>
+              <th>Trend</th>
+              <th>Orgs</th>
+              <th>First seen</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="error-code">APEX_CPU_LIMIT</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">CPU limit exceeded</div>
+              </td>
+              <td>
+                <span class="error-badge badge-red">12,440</span>
+              </td>
+              <td>
+                <div class="error-bar-wrap"><div class="error-bar" style="width:100%"></div></div>
+              </td>
+              <td><span class="masked-pill">🔒 Masked</span></td>
+              <td style="color:var(--text-muted);font-size:11px;">Mar 18</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="error-code">SOQL_LIMIT</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Query rows exceeded</div>
+              </td>
+              <td><span class="error-badge badge-red">4,812</span></td>
+              <td><div class="error-bar-wrap"><div class="error-bar" style="width:39%"></div></div></td>
+              <td><span class="masked-pill">🔒 Masked</span></td>
+              <td style="color:var(--text-muted);font-size:11px;">Mar 12</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="error-code">CALLOUT_FAIL</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">External callout timeout</div>
+              </td>
+              <td><span class="error-badge badge-yellow">1,203</span></td>
+              <td><div class="error-bar-wrap"><div class="error-bar" style="width:10%;background:var(--yellow)"></div></div></td>
+              <td><span class="masked-pill">🔒 Masked</span></td>
+              <td style="color:var(--text-muted);font-size:11px;">Feb 28</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="error-code">DML_EXCEPTION</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Record lock conflict</div>
+              </td>
+              <td><span class="error-badge badge-yellow">874</span></td>
+              <td><div class="error-bar-wrap"><div class="error-bar" style="width:7%;background:var(--yellow)"></div></div></td>
+              <td><span class="masked-pill">🔒 Masked</span></td>
+              <td style="color:var(--text-muted);font-size:11px;">Mar 5</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="error-code">NULL_POINTER</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Null reference in flow</div>
+              </td>
+              <td><span class="error-badge badge-gray">311</span></td>
+              <td><div class="error-bar-wrap"><div class="error-bar" style="width:3%;background:#9ca3af"></div></div></td>
+              <td><span class="masked-pill">🔒 Masked</span></td>
+              <td style="color:var(--text-muted);font-size:11px;">Jan 9</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    Data refreshes every hour &nbsp;·&nbsp; 28-day lookback &nbsp;·&nbsp; Org-level attribution requires data sharing agreement
+  </div>
+
+</div>
+
+<script>
+  // ── Shared helpers ──────────────────────────────────────────────────────────
+
+  const days28 = Array.from({length: 28}, (_, i) => {
+    const d = new Date(2026, 2, 1 + i); // March 1–28
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  });
+
+  const gridColor = 'rgba(0,0,0,0.05)';
+  const tickStyle = { color: '#9ca3af', font: { size: 11 } };
+  const tooltipStyle = {
+    backgroundColor: '#1f2937',
+    titleColor: '#f9fafb',
+    bodyColor: '#d1d5db',
+    padding: 10,
+    cornerRadius: 6,
+    titleFont: { weight: '700', size: 12 },
+    bodyFont: { size: 12 },
+    displayColors: false,
+  };
+  const noLegend = { display: false };
+
+  // ── Health score donut ──────────────────────────────────────────────────────
+
+  new Chart(document.getElementById('scoreRing'), {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [61, 39],
+        backgroundColor: ['#f59e0b', '#f3f4f6'],
+        borderWidth: 0,
+        hoverOffset: 0,
+      }]
+    },
+    options: {
+      cutout: '74%',
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      animation: { animateRotate: true, duration: 900 },
+    }
+  });
+
+  // ── Installs chart ──────────────────────────────────────────────────────────
+
+  const installBase = 498;
+  const installData = days28.map((_, i) => {
+    return installBase + Math.floor(i * 0.5) + (i > 18 ? 2 : 0) + (Math.random() * 1 | 0);
+  });
+
+  new Chart(document.getElementById('installChart'), {
+    type: 'line',
+    data: {
+      labels: days28,
+      datasets: [{
+        data: installData,
+        borderColor: '#0176d3',
+        backgroundColor: 'rgba(1,118,211,0.08)',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: true,
+        tension: 0.35,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: noLegend, tooltip: tooltipStyle },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { ...tickStyle, maxTicksLimit: 7 } },
+        y: { grid: { color: gridColor }, ticks: tickStyle, min: 490 }
+      }
+    }
+  });
+
+  // ── MAU chart ───────────────────────────────────────────────────────────────
+
+  const mauData = days28.map((_, i) => {
+    const base = 7850 + i * 18;
+    return base + Math.floor(Math.sin(i / 3) * 120 + Math.random() * 80);
+  });
+
+  new Chart(document.getElementById('mauChart'), {
+    type: 'bar',
+    data: {
+      labels: days28,
+      datasets: [{
+        data: mauData,
+        backgroundColor: 'rgba(1,118,211,0.75)',
+        borderRadius: 3,
+        hoverBackgroundColor: '#0176d3',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: noLegend, tooltip: tooltipStyle },
+      scales: {
+        x: { grid: { display: false }, ticks: { ...tickStyle, maxTicksLimit: 7 } },
+        y: { grid: { color: gridColor }, ticks: tickStyle, min: 7200 }
+      }
+    }
+  });
+
+  // ── Error rate chart ────────────────────────────────────────────────────────
+
+  const errorBase = days28.map((_, i) => {
+    if (i < 17) return 12 + Math.random() * 4;        // normal baseline ~12-16
+    if (i === 17) return 28 + Math.random() * 5;      // spike starts Mar 18
+    if (i <= 21) return 55 + Math.random() * 12;      // peak
+    return 40 + Math.random() * 8;                    // still elevated
+  });
+
+  const errorPlugin = {
+    id: 'spikeAnnotation',
+    afterDraw(chart) {
+      const ctx = chart.ctx;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      const spikeIdx = 17;
+      const x = xScale.getPixelForIndex(spikeIdx);
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(186,5,23,0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.moveTo(x, yScale.top);
+      ctx.lineTo(x, yScale.bottom);
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  new Chart(document.getElementById('errorRateChart'), {
+    type: 'line',
+    plugins: [errorPlugin],
+    data: {
+      labels: days28,
+      datasets: [{
+        data: errorBase,
+        borderColor: '#ba0517',
+        backgroundColor: 'rgba(186,5,23,0.07)',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: true,
+        tension: 0.35,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: noLegend,
+        tooltip: {
+          ...tooltipStyle,
+          callbacks: {
+            label: (ctx) => ` ${ctx.parsed.y.toFixed(1)} errors / 1k invocations`
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { ...tickStyle, maxTicksLimit: 7 } },
+        y: {
+          grid: { color: gridColor },
+          ticks: { ...tickStyle, callback: v => v.toFixed(0) },
+          min: 0
+        }
+      }
+    }
+  });
+</script>
+</body>
+</html>
